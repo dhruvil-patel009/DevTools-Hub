@@ -93,14 +93,18 @@ export async function handleAiRoute(request: NextRequest, task: AiTaskType) {
         output: result.output,
         model: result.model,
       });
-    } catch {
+    } catch (providerErr) {
+      const safeMsg =
+        providerErr instanceof Error ? providerErr.message : 'Unknown Gemini provider error';
+      console.error(`[AI:${task}] Gemini provider error: ${safeMsg}`);
+
       if (isDatabaseConfigured() && dbToolId) {
         await prisma.aIUsage.create({
           data: {
             userId: authRes.actor.id,
             toolId: dbToolId,
             provider: 'gemini',
-            model: 'gemini-2.0-flash',
+            model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
             status: AIRequestStatus.ERROR,
           },
         });
