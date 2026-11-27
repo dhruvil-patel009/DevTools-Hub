@@ -55,9 +55,7 @@ export async function requireSuperAdmin(): Promise<
   return res;
 }
 
-export function canManageAdminRoles(actorRole: UserRole): boolean {
-  return actorRole === 'SUPER_ADMIN';
-}
+export { canManageAdminRoles, canAccessAdminPanel } from './rbac';
 
 export async function isLastActiveSuperAdmin(userId: string): Promise<boolean> {
   if (!isDatabaseConfigured()) return false;

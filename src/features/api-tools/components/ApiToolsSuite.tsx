@@ -17,6 +17,7 @@ export function HttpRequestTesterTool() {
   const [url, setUrl] = React.useState('https://jsonplaceholder.typicode.com/todos/1');
   const [headersText, setHeadersText] = React.useState('{\n  "Accept": "application/json"\n}');
   const [bodyText, setBodyText] = React.useState('');
+  const [useProxy, setUseProxy] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [response, setResponse] = React.useState<{
     status: number;
@@ -45,6 +46,39 @@ export function HttpRequestTesterTool() {
     const start = performance.now();
 
     try {
+      if (useProxy) {
+        const res = await fetch('/api/v1/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            method,
+            url,
+            headers: parsedHeaders,
+            body: !['GET', 'HEAD'].includes(method) && bodyText ? bodyText : undefined,
+          }),
+          signal: controller.signal,
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          setError(json?.error?.message || 'Proxy request failed (sign-in required).');
+          return;
+        }
+        let formatted = json.data.body;
+        try {
+          formatted = JSON.stringify(JSON.parse(formatted), null, 2);
+        } catch {
+          // plain text
+        }
+        setResponse({
+          status: json.data.status,
+          statusText: json.data.statusText,
+          durationMs: json.data.durationMs,
+          headers: json.data.headers,
+          body: formatted,
+        });
+        return;
+      }
+
       const res = await fetch(url, {
         method,
         headers: parsedHeaders,
@@ -124,6 +158,15 @@ export function HttpRequestTesterTool() {
           Copy cURL
         </Button>
       </div>
+
+      <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-[var(--muted-foreground)]">
+        <input
+          type="checkbox"
+          checked={useProxy}
+          onChange={(e) => setUseProxy(e.target.checked)}
+        />
+        Use authenticated SSRF-protected server proxy (for non-CORS public APIs; requires sign-in)
+      </label>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-1">
