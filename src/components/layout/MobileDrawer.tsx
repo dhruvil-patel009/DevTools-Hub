@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { X, Terminal } from 'lucide-react';
+import { X } from 'lucide-react';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 import { TOOL_CATEGORIES } from '@/lib/tool-registry/categories';
 import { ToolIcon } from '@/components/shared/ToolIcon';
 
@@ -15,9 +16,7 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
       <div className="relative z-10 flex w-72 max-w-[85vw] flex-col border-r border-[var(--border)] bg-[var(--card)] p-4 shadow-xl">
         <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
           <Link href="/" onClick={onClose} className="flex items-center gap-2 font-bold">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
-              <Terminal className="h-4 w-4" />
-            </span>
+            <BrandLogo className="h-7 w-7" />
             DevTools Hub
           </Link>
           <button

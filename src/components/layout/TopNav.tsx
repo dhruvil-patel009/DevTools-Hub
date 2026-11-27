@@ -2,13 +2,16 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Menu, Search, Terminal, User } from 'lucide-react';
+import { useSession, signOut } from 'next-auth/react';
+import { LayoutDashboard, LogOut, Menu, Search, User } from 'lucide-react';
 import { useWorkspaceStore } from '@/stores/useWorkspaceStore';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 import { Button } from '@/components/ui/button';
 
 export function TopNav({ onOpenMobileMenu }: { onOpenMobileMenu: () => void }) {
   const setCommandPaletteOpen = useWorkspaceStore((s) => s.setCommandPaletteOpen);
+  const { data: session, status } = useSession();
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--background)]/85 backdrop-blur-md">
@@ -24,9 +27,7 @@ export function TopNav({ onOpenMobileMenu }: { onOpenMobileMenu: () => void }) {
           </button>
 
           <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#7C3AED] text-white shadow-sm">
-              <Terminal className="h-4 w-4" />
-            </span>
+            <BrandLogo className="h-8 w-8 shrink-0 shadow-sm" />
             <span className="text-base font-bold">
               DevTools <span className="text-[#06B6D4]">Hub</span>
             </span>
@@ -70,12 +71,32 @@ export function TopNav({ onOpenMobileMenu }: { onOpenMobileMenu: () => void }) {
 
           <ThemeToggle />
 
-          <Link href="/login">
-            <Button variant="outline" size="sm" className="hidden sm:inline-flex">
-              <User className="h-3.5 w-3.5" />
-              Sign In
-            </Button>
-          </Link>
+          {status === 'authenticated' && session?.user ? (
+            <div className="hidden items-center gap-1.5 sm:flex">
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm" title={session.user.email ?? 'Dashboard'}>
+                  <LayoutDashboard className="h-3.5 w-3.5 text-[#06B6D4]" />
+                  {session.user.name?.split(' ')[0] || 'Dashboard'}
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => signOut({ callbackUrl: '/' })}
+                title="Sign Out"
+                aria-label="Sign Out"
+              >
+                <LogOut className="h-4 w-4 text-[var(--muted-foreground)]" />
+              </Button>
+            </div>
+          ) : (
+            <Link href="/login">
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                <User className="h-3.5 w-3.5" />
+                Sign In
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </header>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AppShell } from '@/components/layout/AppShell';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
+import { siteConfig } from '@/config/site';
 
 export const metadata: Metadata = {
   title: 'About & Documentation',
@@ -17,6 +18,24 @@ export default function AboutPage() {
           DevTools Hub is a modular, full-stack developer utility workspace designed around speed,
           privacy, and clean ergonomics.
         </p>
+
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-2">
+          <h2 className="text-xl font-semibold">Creator</h2>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Built and maintained by{' '}
+            <span className="font-semibold text-[var(--foreground)]">{siteConfig.author}</span>.
+            Source code is available on{' '}
+            <a
+              href={siteConfig.githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#06B6D4] hover:underline"
+            >
+              GitHub
+            </a>
+            .
+          </p>
+        </section>
 
         <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-3">
           <h2 className="text-xl font-semibold">Privacy-First Execution</h2>
