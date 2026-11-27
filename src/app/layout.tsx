@@ -23,6 +23,8 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  authors: [{ name: siteConfig.author, url: siteConfig.githubUrl }],
+  creator: siteConfig.author,
   openGraph: {
     type: 'website',
     locale: 'en_US',

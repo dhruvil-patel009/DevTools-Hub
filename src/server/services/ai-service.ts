@@ -4,7 +4,7 @@ import { AIRequestStatus } from '@prisma/client';
 import { prisma } from '@/lib/database/prisma';
 import { isAIConfigured, isDatabaseConfigured } from '@/config/env';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { runGeminiTask, type AiTaskType } from '@/lib/ai/gemini';
+import { runGeminiTask, streamGeminiTask, type AiTaskType } from '@/lib/ai/gemini';
 import { requireAuth } from '@/server/permissions/auth';
 import { apiError, apiSuccess, handleUnexpectedError } from '@/server/http/response';
 
@@ -72,7 +72,51 @@ export async function handleAiRoute(request: NextRequest, task: AiTaskType) {
       dbToolId = dbTool?.id ?? null;
     }
 
+    const wantStream = request.nextUrl.searchParams.get('stream') === '1';
+
     try {
+      if (wantStream) {
+        const { stream, model } = await streamGeminiTask(
+          task,
+          parsed.data.language,
+          parsed.data.code
+        );
+        const encoder = new TextEncoder();
+        const actorId = authRes.actor.id;
+
+        const readable = new ReadableStream({
+          async start(controller) {
+            try {
+              for await (const chunk of stream) {
+                const text = chunk.text();
+                if (text) controller.enqueue(encoder.encode(text));
+              }
+              if (isDatabaseConfigured() && dbToolId) {
+                await prisma.aIUsage.create({
+                  data: {
+                    userId: actorId,
+                    toolId: dbToolId,
+                    provider: 'gemini',
+                    model,
+                    status: AIRequestStatus.SUCCESS,
+                  },
+                });
+              }
+              controller.close();
+            } catch (streamErr) {
+              controller.error(streamErr);
+            }
+          },
+        });
+
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-cache, no-transform',
+          },
+        });
+      }
+
       const result = await runGeminiTask(task, parsed.data.language, parsed.data.code);
 
       if (isDatabaseConfigured() && dbToolId) {
@@ -104,12 +148,21 @@ export async function handleAiRoute(request: NextRequest, task: AiTaskType) {
             userId: authRes.actor.id,
             toolId: dbToolId,
             provider: 'gemini',
-            model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+            model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
             status: AIRequestStatus.ERROR,
           },
         });
       }
-      return apiError('AI_PROVIDER_ERROR', 'AI provider failed to generate a response.', 502);
+      let clientMsg = 'AI provider failed to generate a response.';
+      if (safeMsg.includes('429') || safeMsg.includes('RESOURCE_EXHAUSTED')) {
+        clientMsg = 'Gemini API rate limit or free-tier quota exceeded. Please try again later.';
+      } else if (safeMsg.includes('API_KEY_INVALID') || safeMsg.includes('API key not valid')) {
+        clientMsg = 'Configured Gemini API key is invalid or restricted.';
+      } else if (safeMsg.includes('403') || safeMsg.includes('PERMISSION_DENIED')) {
+        clientMsg = 'Gemini API permission denied. Ensure Generative Language API is enabled.';
+      }
+
+      return apiError('AI_PROVIDER_ERROR', clientMsg, 502);
     }
   } catch (err) {
     return handleUnexpectedError(err, `POST /api/v1/ai/${task}`);

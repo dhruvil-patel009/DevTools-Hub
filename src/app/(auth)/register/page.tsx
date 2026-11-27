@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Terminal } from 'lucide-react';
+import { BrandLogo } from '@/components/shared/BrandLogo';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,9 +43,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 shadow-xl">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 font-bold text-lg">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#7C3AED] text-white">
-              <Terminal className="h-5 w-5" />
-            </span>
+            <BrandLogo className="h-9 w-9" />
             DevTools Hub
           </Link>
           <h1 className="mt-4 text-2xl font-bold tracking-tight">Create an account</h1>

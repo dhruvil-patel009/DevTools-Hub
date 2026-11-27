@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Bot, ShieldAlert, XCircle } from 'lucide-react';
+import { Bot, Loader2, ShieldAlert, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { MonacoEditorWrapper } from '@/components/editors/MonacoEditorWrapper';
@@ -18,9 +18,20 @@ export function AiCodeAssistantTool({
   );
   const [consent, setConsent] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [elapsedSec, setElapsedSec] = React.useState(0);
   const [output, setOutput] = React.useState('');
   const [error, setError] = React.useState('');
   const abortRef = React.useRef<AbortController | null>(null);
+
+  React.useEffect(() => {
+    if (!loading) return;
+    const start = Date.now();
+    setElapsedSec(0);
+    const id = window.setInterval(() => {
+      setElapsedSec(Number(((Date.now() - start) / 1000).toFixed(1)));
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [loading]);
 
   const endpoint = `/api/v1/ai/${task}`;
 
@@ -36,17 +47,37 @@ export function AiCodeAssistantTool({
     setLoading(true);
 
     try {
-      const res = await fetch(endpoint, {
+      const res = await fetch(`${endpoint}?stream=1`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language, code, consentConfirmed: true }),
         signal: controller.signal,
       });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        setError(json?.error?.message || 'AI request failed.');
-      } else {
-        setOutput(json.data.output);
+
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || contentType.includes('application/json')) {
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          setError(json?.error?.message || 'AI request failed.');
+        } else {
+          setOutput(json.data.output);
+        }
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setOutput(await res.text());
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setOutput(accumulated);
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
@@ -121,8 +152,36 @@ export function AiCodeAssistantTool({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <MonacoEditorWrapper value={code} onChange={setCode} language={language} />
-        <div className="max-h-[420px] min-h-[320px] overflow-auto whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm">
-          {output || 'AI response will appear here.'}
+        <div className="flex max-h-[420px] min-h-[320px] flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)]">
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-2 text-xs text-[var(--muted-foreground)]">
+            <span className="font-semibold uppercase tracking-wider">AI Output</span>
+            {loading && (
+              <span className="inline-flex items-center gap-1.5 font-mono text-[#06B6D4]">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {output ? `Streaming (${elapsedSec.toFixed(1)}s)` : `Generating (${elapsedSec.toFixed(1)}s)...`}
+              </span>
+            )}
+            {!loading && output && elapsedSec > 0 && (
+              <span className="font-mono text-[#22C55E]">Done in {elapsedSec.toFixed(1)}s</span>
+            )}
+          </div>
+          <div className="flex-1 overflow-auto whitespace-pre-wrap p-4 text-sm">
+            {loading && !output ? (
+              <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 text-center text-[var(--muted-foreground)]">
+                <Loader2 className="h-7 w-7 animate-spin text-[#7C3AED]" />
+                <div>
+                  <p className="font-medium text-[var(--foreground)]">
+                    AI is analyzing your {language} code...
+                  </p>
+                  <p className="mt-1 text-xs">
+                    Waiting for first token ({elapsedSec.toFixed(1)}s). Click Cancel anytime.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              output || 'AI response will appear here.'
+            )}
+          </div>
         </div>
       </div>
     </div>
