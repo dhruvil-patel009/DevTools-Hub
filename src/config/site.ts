@@ -4,7 +4,8 @@ export const siteConfig = {
   tagline: 'Everything developers need. One workspace.',
   description:
     'A fast, privacy-first developer utility workspace with 50+ tools for JSON, code formatting, data conversion, CSS design, cryptography, regex, API testing, and optional AI assistance.',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  
+  url: (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/+$/, ''),
   githubUrl: 'https://github.com/dhruvil-patel009/DevTools-Hub',
   links: {
     docs: '/about',
